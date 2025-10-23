@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+        "target": "ES2017",
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "declaration": true,
+        "outDir": "dist",
+        "baseUrl": ".",
+        "paths": {
+            "@types": ["./src/@types/index.ts"],
+            "@types/*": ["./src/@types/*"]
+        }
+    },
+    "include": [
+        "src/**/*.ts",
+        "types/**/*.ts"
+    ]
+}
