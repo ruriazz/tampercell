@@ -2,7 +2,9 @@ import type {
     NextObserverConfig, 
     NextObserverState, 
     NextReadyEventDetail, 
-    NextObserverInstance 
+    NextObserverInstance,
+    NextRouteChangeEventDetail,
+    NextRouteLoadEventDetail
 } from '@types';
 
 class NextJsObserver {
@@ -12,6 +14,8 @@ class NextJsObserver {
     private mutationCount: number = 0;
     private mutationTimer: NodeJS.Timeout | null = null;
     private observer: MutationObserver | null = null;
+    private routeChangeCallbacks: Array<(from: string, to: string) => void> = [];
+    private routeLoadStartTime: number = 0;
 
     constructor(userConfig: NextObserverConfig = {}) {
         this.config = {
@@ -19,6 +23,8 @@ class NextJsObserver {
             checkInterval: 100,
             debug: true,
             minContentCheck: 3, // minimum content elements before considered loaded
+            routeChangeDetection: true, // Enable route change detection by default
+            routeLoadTimeout: 5000, // 5 seconds timeout for route load
             ...userConfig
         };
 
@@ -28,7 +34,10 @@ class NextJsObserver {
             scriptsLoaded: false,
             imagesLoaded: false,
             noMoreMutations: false,
-            firstPaint: false
+            firstPaint: false,
+            routeChangeInProgress: false,
+            currentRoute: window.location.pathname,
+            previousRoute: ''
         };
 
         this.init();
@@ -326,6 +335,7 @@ class NextJsObserver {
         this.log('Next.js Observer initialized');
 
         this.attachImageListeners();
+        this.setupRouteChangeDetection();
 
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => {
@@ -348,16 +358,181 @@ class NextJsObserver {
         });
         scriptObserver.observe(document.documentElement, { childList: true, subtree: true });
 
+        // Setup route change detection
+        this.setupRouteChangeDetection();
+
         // Expose for debugging
         const debugInstance: NextObserverInstance = {
             state: this.state,
             config: this.config,
             forceCheck: () => this.checkIfReady(),
             forceReady: () => this.onNextJsReady(),
-            detectNext: () => this.detectNextJs()
+            detectNext: () => this.detectNextJs(),
+            getCurrentRoute: () => this.getCurrentRoute(),
+            onRouteChange: (callback) => this.onRouteChange(callback)
         };
 
         window.__nextObserver = debugInstance;
+    }
+
+    // Route change detection methods
+    private onRouteChangeStart(to: string): void {
+        const from = this.state.currentRoute;
+        
+        if (from === to) return; // No actual route change
+
+        this.log('🔄 Route change starting:', from, '->', to);
+        
+        this.state.previousRoute = from;
+        this.state.currentRoute = to;
+        this.state.routeChangeInProgress = true;
+        this.routeLoadStartTime = performance.now();
+
+        // Reset content loading states for new route
+        this.state.contentLoaded = false;
+        this.state.scriptsLoaded = false;
+        this.state.imagesLoaded = false;
+        this.state.noMoreMutations = false;
+
+        // Dispatch before route change event
+        const beforeChangeDetail: NextRouteChangeEventDetail = {
+            from,
+            to,
+            timestamp: Date.now()
+        };
+
+        window.dispatchEvent(new CustomEvent('nextjs:route:before-change', {
+            detail: beforeChangeDetail
+        }));
+
+        // Notify callbacks
+        this.routeChangeCallbacks.forEach(callback => {
+            try {
+                callback(from, to);
+            } catch (e) {
+                this.log('Error in route change callback:', e);
+            }
+        });
+    }
+
+    private onRouteLoadComplete(): void {
+        if (!this.state.routeChangeInProgress) return;
+
+        this.log('✅ Route load complete:', this.state.currentRoute);
+        this.state.routeChangeInProgress = false;
+
+        const afterLoadDetail: NextRouteLoadEventDetail = {
+            route: this.state.currentRoute,
+            timestamp: Date.now(),
+            timing: performance.now() - this.routeLoadStartTime,
+            state: { ...this.state }
+        };
+
+        window.dispatchEvent(new CustomEvent('nextjs:route:after-load', {
+            detail: afterLoadDetail
+        }));
+    }
+
+    private setupRouteChangeDetection(): void {
+        if (!this.config.routeChangeDetection) return;
+
+        this.log('🔗 Setting up route change detection');
+
+        // Store reference to this instance for use in global callbacks
+        const self = this;
+
+        // Method 1: Listen to Next.js router events (if available)
+        if (window.next?.router) {
+            const { router } = window.next;
+            
+            router.events.on('routeChangeStart', (url: string) => {
+                self.onRouteChangeStart(url);
+            });
+
+            router.events.on('routeChangeComplete', () => {
+                // Wait a bit for content to load before marking as complete
+                setTimeout(() => {
+                    if (self.checkContentLoaded()) {
+                        self.onRouteLoadComplete();
+                    } else {
+                        // Check periodically for content loaded
+                        self.startRouteLoadObservation();
+                    }
+                }, 100);
+            });
+
+            router.events.on('routeChangeError', () => {
+                self.state.routeChangeInProgress = false;
+                self.log('❌ Route change error');
+            });
+        }
+
+        // Method 2: Listen to browser navigation events (popstate)
+        window.addEventListener('popstate', () => {
+            const newRoute = self.getCurrentRoute();
+            if (newRoute !== self.state.currentRoute) {
+                self.onRouteChangeStart(newRoute);
+                setTimeout(() => self.startRouteLoadObservation(), 100);
+            }
+        });
+
+        // Method 3: Override pushState and replaceState
+        const originalPushState = history.pushState;
+        const originalReplaceState = history.replaceState;
+
+        history.pushState = function(...args) {
+            const result = originalPushState.apply(this, args);
+            setTimeout(() => {
+                const newRoute = window.location.pathname + window.location.search;
+                if (newRoute !== self.state.currentRoute) {
+                    self.onRouteChangeStart(newRoute);
+                    setTimeout(() => self.startRouteLoadObservation(), 100);
+                }
+            }, 0);
+            return result;
+        };
+
+        history.replaceState = function(...args) {
+            const result = originalReplaceState.apply(this, args);
+            setTimeout(() => {
+                const newRoute = window.location.pathname + window.location.search;
+                if (newRoute !== self.state.currentRoute) {
+                    self.onRouteChangeStart(newRoute);
+                    setTimeout(() => self.startRouteLoadObservation(), 100);
+                }
+            }, 0);
+            return result;
+        };
+    }
+
+    private startRouteLoadObservation(): void {
+        if (!this.state.routeChangeInProgress) return;
+
+        this.log('👀 Starting route load observation');
+
+        let checkCount = 0;
+        const maxChecks = this.config.routeLoadTimeout / this.config.checkInterval;
+
+        const checkInterval = setInterval(() => {
+            checkCount++;
+
+            // Check if new route content is loaded
+            const isContentLoaded = this.checkContentLoaded();
+            const isScriptsLoaded = this.checkScriptsLoaded();
+            const isImagesLoaded = this.checkImagesLoaded();
+
+            if (isContentLoaded && isScriptsLoaded && isImagesLoaded) {
+                clearInterval(checkInterval);
+                this.onRouteLoadComplete();
+                return;
+            }
+
+            if (checkCount >= maxChecks) {
+                clearInterval(checkInterval);
+                this.log('⚠️ Route load timeout reached');
+                this.onRouteLoadComplete(); // Force complete
+            }
+        }, this.config.checkInterval);
     }
 
     // Public method to force check
@@ -373,6 +548,16 @@ class NextJsObserver {
     // Public method to detect Next.js
     public detectNext(): boolean {
         return this.detectNextJs();
+    }
+
+    // Public method to get current route
+    public getCurrentRoute(): string {
+        return this.state.currentRoute;
+    }
+
+    // Public method to add route change callback
+    public onRouteChange(callback: (from: string, to: string) => void): void {
+        this.routeChangeCallbacks.push(callback);
     }
 }
 
