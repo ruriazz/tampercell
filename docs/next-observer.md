@@ -12,6 +12,7 @@ Next Observer provides intelligent detection and monitoring of Next.js applicati
 - [Configuration](#-configuration)
 - [API Reference](#-api-reference)
 - [Event Details](#-event-details)
+- [Route Change Detection](#-route-change-detection)
 - [Detection Methods](#-detection-methods)
 - [Examples](#-examples)
 - [Troubleshooting](#-troubleshooting)
@@ -26,6 +27,7 @@ Next Observer provides intelligent detection and monitoring of Next.js applicati
 - ⏱️ **Timeout Protection** - Prevents infinite waiting with configurable timeouts
 - 📊 **State Tracking** - Detailed readiness state information
 - 🔧 **Manual Controls** - Force checks and trigger events manually
+- 🚀 **Route Change Detection** - Monitor client-side navigation with before/after events
 
 ## 📦 Installation
 
@@ -220,7 +222,65 @@ window.addEventListener('nextjs:ready', (event) => {
 });
 ```
 
-## 🔍 Detection Methods
+## � Route Change Detection
+
+Next Observer includes powerful route change detection capabilities for monitoring client-side navigation in Next.js applications.
+
+### Quick Setup
+
+```javascript
+// Enable route change detection (enabled by default)
+window.NextObserver({
+    routeChangeDetection: true,
+    routeLoadTimeout: 5000,
+    debug: true
+});
+
+// Listen for route changes
+window.addEventListener('nextjs:route:before-change', (event) => {
+    console.log('🔄 Route changing:', event.detail.from, '→', event.detail.to);
+    // Cleanup before route change
+});
+
+window.addEventListener('nextjs:route:after-load', (event) => {
+    console.log('✅ Route loaded:', event.detail.route, 'in', event.detail.timing, 'ms');
+    // Initialize new page
+});
+```
+
+### Route Change Events
+
+| Event | Description | Use Case |
+|-------|-------------|----------|
+| `nextjs:route:before-change` | Triggered before route transition | Cleanup, save state, show loading |
+| `nextjs:route:after-load` | Triggered after route fully loaded | Initialize components, analytics |
+
+### API Methods
+
+```javascript
+// Get current route
+const route = window.__nextObserver.getCurrentRoute();
+
+// Register route change callback
+window.__nextObserver.onRouteChange((from, to) => {
+    console.log(`Navigation: ${from} → ${to}`);
+});
+```
+
+### Route State Tracking
+
+```javascript
+const state = window.__nextObserver.state;
+console.log({
+    routeChangeInProgress: state.routeChangeInProgress,
+    currentRoute: state.currentRoute,
+    previousRoute: state.previousRoute
+});
+```
+
+> **📖 Full Documentation:** See [Route Change Detection Guide](./route-change-detection.md) for comprehensive examples, best practices, and troubleshooting.
+
+## �🔍 Detection Methods
 
 Next Observer uses multiple detection strategies for maximum reliability:
 

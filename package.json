@@ -1,14 +1,94 @@
 {
   "name": "tampercell",
-  "version": "1.0.0",
+  "version": "1.1.0",
+  "description": "Modern TypeScript libraries for enhanced Tampermonkey development with Next.js monitoring and advanced console debugging",
   "type": "module",
-  "scripts": {
-    "build": "rollup -c"
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "docs",
+    "src/@types",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.cjs.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./next-observer": {
+      "import": "./dist/next-observer/main.esm.js",
+      "require": "./dist/next-observer/main.cjs.js",
+      "types": "./dist/next-observer/index.d.ts"
+    },
+    "./custom-console": {
+      "import": "./dist/custom-console/main.esm.js",
+      "require": "./dist/custom-console/main.cjs.js",
+      "types": "./dist/custom-console/index.d.ts"
+    }
   },
-  "keywords": [],
-  "author": "",
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c -w",
+    "clean": "rm -rf dist",
+    "rebuild": "npm run clean && npm run build",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --ext .ts,.tsx",
+    "test": "echo \"No tests specified yet\" && exit 0",
+    "prepublishOnly": "npm run rebuild"
+  },
+  "keywords": [
+    "tampermonkey",
+    "userscript",
+    "greasemonkey",
+    "typescript",
+    "nextjs",
+    "console",
+    "debugging",
+    "web-automation",
+    "browser-extension",
+    "dom-manipulation",
+    "route-detection",
+    "spa-monitoring",
+    "developer-tools"
+  ],
+  "author": {
+    "name": "ruriazz",
+    "url": "https://github.com/ruriazz"
+  },
   "license": "ISC",
-  "description": "",
+  "homepage": "https://github.com/ruriazz/tampercell#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ruriazz/tampercell.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ruriazz/tampercell/issues"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "browserslist": [
+    "last 2 Chrome versions",
+    "last 2 Firefox versions",
+    "last 2 Safari versions",
+    "last 2 Edge versions"
+  ],
+  "cdn": {
+    "next-observer": "https://cdn.jsdelivr.net/gh/ruriazz/tampercell@latest/dist/next-observer/main.min.js",
+    "custom-console": {
+      "js": "https://cdn.jsdelivr.net/gh/ruriazz/tampercell@latest/dist/custom-console/main.min.js",
+      "css": "https://cdn.jsdelivr.net/gh/ruriazz/tampercell@latest/dist/custom-console/main.min.css"
+    }
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/ruriazz"
+  },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^28.0.8",
     "@rollup/plugin-node-resolve": "^16.0.3",

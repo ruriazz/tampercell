@@ -1,0 +1,42 @@
+# Development files
+src/
+rollup.config.js
+tsconfig.json
+.gitignore
+.npmignore
+
+# Documentation (keep only essential ones)
+docs/examples.md
+
+# Build artifacts (keep only dist)
+node_modules/
+*.log
+*.tgz
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Development and testing
+coverage/
+.nyc_output/
+.jest/
+*.test.js
+*.spec.js
+
+# Temporary files
+*.tmp
+*.temp
+.cache/

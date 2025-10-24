@@ -5,6 +5,8 @@ export interface NextObserverConfig {
     checkInterval?: number;
     debug?: boolean;
     minContentCheck?: number;
+    routeChangeDetection?: boolean; // Enable route change detection
+    routeLoadTimeout?: number; // Timeout for route load detection
 }
 
 export interface NextObserverState {
@@ -14,6 +16,9 @@ export interface NextObserverState {
     imagesLoaded: boolean;
     noMoreMutations: boolean;
     firstPaint: boolean;
+    routeChangeInProgress: boolean;
+    currentRoute: string;
+    previousRoute: string;
 }
 
 export interface NextReadyEventDetail {
@@ -22,12 +27,27 @@ export interface NextReadyEventDetail {
     timing: number;
 }
 
+export interface NextRouteChangeEventDetail {
+    from: string;
+    to: string;
+    timestamp: number;
+}
+
+export interface NextRouteLoadEventDetail {
+    route: string;
+    timestamp: number;
+    timing: number;
+    state: NextObserverState;
+}
+
 export interface NextObserverInstance {
     state: NextObserverState;
     config: Required<NextObserverConfig>;
     forceCheck: () => boolean;
     forceReady: () => void;
     detectNext: () => boolean;
+    getCurrentRoute: () => string;
+    onRouteChange: (callback: (from: string, to: string) => void) => void;
 }
 
 // Next.js specific types
@@ -50,5 +70,7 @@ declare global {
 
     interface WindowEventMap {
         'nextjs:ready': CustomEvent<NextReadyEventDetail>;
+        'nextjs:route:before-change': CustomEvent<NextRouteChangeEventDetail>;
+        'nextjs:route:after-load': CustomEvent<NextRouteLoadEventDetail>;
     }
 }

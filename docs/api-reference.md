@@ -41,6 +41,18 @@ interface NextObserverConfig {
      * @default 3
      */
     minContentCheck?: number;
+    
+    /**
+     * Enable/disable route change detection
+     * @default true
+     */
+    routeChangeDetection?: boolean;
+    
+    /**
+     * Timeout in milliseconds for route load detection
+     * @default 5000
+     */
+    routeLoadTimeout?: number;
 }
 ```
 
@@ -77,6 +89,21 @@ interface NextObserverState {
      * Whether First Contentful Paint has occurred
      */
     firstPaint: boolean;
+    
+    /**
+     * Whether a route change is currently in progress
+     */
+    routeChangeInProgress: boolean;
+    
+    /**
+     * Current route path with query parameters
+     */
+    currentRoute: string;
+    
+    /**
+     * Previous route before the current transition
+     */
+    previousRoute: string;
 }
 ```
 
@@ -98,6 +125,49 @@ interface NextReadyEventDetail {
      * Time elapsed from script start to ready state (milliseconds)
      */
     timing: number;
+}
+```
+
+### Route Change Event Interfaces
+
+```typescript
+interface NextRouteChangeEventDetail {
+    /**
+     * Previous route path with query parameters
+     */
+    from: string;
+    
+    /**
+     * New route path with query parameters
+     */
+    to: string;
+    
+    /**
+     * Timestamp when route change started
+     */
+    timestamp: number;
+}
+
+interface NextRouteLoadEventDetail {
+    /**
+     * Current route path with query parameters
+     */
+    route: string;
+    
+    /**
+     * Timestamp when route load completed
+     */
+    timestamp: number;
+    
+    /**
+     * Route load time in milliseconds
+     */
+    timing: number;
+    
+    /**
+     * Observer state snapshot after route load
+     */
+    state: NextObserverState;
 }
 ```
 
@@ -131,6 +201,18 @@ interface NextObserverInstance {
      * @returns true if Next.js detected, false otherwise
      */
     detectNext(): boolean;
+    
+    /**
+     * Get current route path with query parameters
+     * @returns Current route string
+     */
+    getCurrentRoute(): string;
+    
+    /**
+     * Register callback for route changes
+     * @param callback Function to call on route changes
+     */
+    onRouteChange(callback: (from: string, to: string) => void): void;
 }
 ```
 
@@ -377,6 +459,16 @@ declare global {
          * Fired when Next.js application is ready
          */
         'nextjs:ready': CustomEvent<NextReadyEventDetail>;
+        
+        /**
+         * Fired before a route change begins
+         */
+        'nextjs:route:before-change': CustomEvent<NextRouteChangeEventDetail>;
+        
+        /**
+         * Fired after a route change completes and content loads
+         */
+        'nextjs:route:after-load': CustomEvent<NextRouteLoadEventDetail>;
     }
 }
 ```
